@@ -154,6 +154,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     10,                  # polling interval
+                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
@@ -174,6 +175,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     16,                  # max packet size
                     0,                   # polling interval
+                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -186,10 +188,11 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     10,                  # polling interval
+                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
-                    EP_DATA_OUT, # endpoint number
+                    EP_DATA_OUT,         # endpoint number
                     USBEndpoint.direction_out,
                     USBEndpoint.transfer_type_bulk,
                     USBEndpoint.sync_type_none,
@@ -206,6 +209,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     64,                  # max packet size
                     0,                   # polling interval
+                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -218,6 +222,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     1,                   # polling interval
+                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
@@ -238,6 +243,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     16,                  # max packet size
                     0,                   # polling interval
+                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -270,6 +276,7 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     64,                  # max packet size
                     0,                   # polling interval
+                    None,
                     self.handle_data_in  # handler function
                 )
             ]
@@ -280,9 +287,9 @@ class USBMicroLANInterface(USBInterface):
                 self,
                 0,          # interface number
                 alternate,  # alternate setting
-                255,        # interface class: vendor-specific
-                255,        # subclass: vendor-specific
-                255,        # protocol: vendor-specific
+                0xff,       # interface class: vendor-specific
+                0xff,       # subclass: vendor-specific
+                0xff,       # protocol: vendor-specific
                 0,          # string index
                 verbose,
                 endpoints[alternate],
@@ -292,15 +299,15 @@ class USBMicroLANInterface(USBInterface):
     def handle_set_interface_request(self, req):
         if req.index == 0 and req.value in range(0, 4):
             self.configuration.device.maxusb_app.ack_status_stage()
-        #else:
-        #    self.configuration.device.maxusb_app.stall_ep0()
+        else:
+            self.configuration.device.maxusb_app.stall_ep0()
 
     def handle_status(self):
         print("EP1: STATUS")
 
         if self.configuration.device.search:
             self.configuration.device.maxusb_app.send_on_endpoint(EP_STATUS,
-                b'\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\x00\x00\x00\x08\x00\x00\x00\x00\x20\x04\x04\x05\x00\x20\x00\x01')
+                b'\x01\x00\x20\x00\x05\x04\x04\x00\x20\x00\x00\x00\x00\x08\x00\x00\xa5')
 
     def handle_data_out(self, req):
         print("EP2: DATA OUT =", req)
@@ -308,11 +315,8 @@ class USBMicroLANInterface(USBInterface):
     def handle_data_in(self):
         print("EP3: DATA_IN")
 
-        if self.configuration.device.search:
-            self.configuration.device.maxusb_app.send_on_endpoint(EP_DATA_IN,
-                b'\x00\x01\x02\x03\x04\x05\x06\x07')
-
-            self.configuration.device.search = False
+        self.configuration.device.maxusb_app.send_on_endpoint(EP_DATA_IN,
+            b'\x00\x01\x02\x03\x04\x05\x06\x07')
 
 
 class OneWireDevice:
@@ -427,6 +431,7 @@ class USBMicroLANDevice(USBDevice, OneWireDevice):
 
         self.ready = False
         self.search = False
+        self.reply = False
 
     def handle_get_string_descriptor_request(self, num):
         try:
