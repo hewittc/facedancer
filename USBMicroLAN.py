@@ -91,48 +91,96 @@ class USBMicroLANVendor(USBVendor):
         if self.verbose > 0:
             print(self.name, "received control request", req)
 
+        def print_control(name, control, req):
+            if self.verbose > 0:
+                print(name, "handling control request", control, "=", hex(req.index))
+
         if req.value == self.CTL_RESET_DEVICE:
             if self.verbose > 0:
-                print(self.name, "CONTROL: CTL_RESET_DEVICE =", hex(req.index))
+                print_control(self.name, "CTL_RESET_DEVICE", req)
+
+            self.device.status['spue'] = False
+            self.device.status['spce'] = False
+            self.device.status['speed'] = 0x00
+            self.device.status['spud'] = 0x20
+            self.device.status['pdsrc'] = 0x05
+            self.device.status['lowt'] = 0x04
+            self.device.status['rect'] = 0x04
+
+            self.device.ready = True
 
         self.device.maxusb_app.send_on_endpoint(EP_CONTROL, b'')
-
-        self.device.ready = True
 
     def handle_comm_request(self, req):
         if self.verbose > 0:
-            print(self.name, "received comm request", req)
+            print(self.name, "received command request", req)
 
         # COMM_SEARCH_ACCESS | COMM_IM | COMM_RST | COMM_SM | COMM_F | COMM_RTS
 
-        if req.value & self.COMM_SEARCH_ACCESS:
-            if self.verbose > 0:
-                print(self.name, "COMM: SEARCH_ACCESS =", hex(req.index))
+        def compare(value, command):
+            return True if ((value & command) == command) else False
 
+        def print_command(name, command):
+            if self.verbose > 0:
+                print(name, "handling command", command)
+
+        if compare(req.value, self.COMM_SEARCH_ACCESS):
+            print_command(self.name, "SEARCH_ACCESS")
             self.device.search = True
-    
+        elif compare(req.value, self.COMM_READ_REDIRECT):
+            print_command(self.name, "READ_REDIRECT")
+        elif compare(req.value, self.COMM_READ_CRC_PROT):
+            print_command(self.name, "READ_CRC_PROT")
+        elif compare(req.value, self.COMM_WRITE_EPROM):
+            print_command(self.name, "WRITE_EPROM")
+        elif compare(req.value, self.COMM_WRITE_SRAM):
+            print_command(self.name, "WRITE_SRAM")
+        elif compare(req.value, self.COMM_SET_PATH):
+            print_command(self.name, "SET_PATH")
+        elif compare(req.value, self.COMM_DO_RELEASE):
+            print_command(self.name, "DO_RELEASE")
+        elif compare(req.value, self.COMM_READ_STRAIGHT):
+            print_command(self.name, "READ_STRAIGHT")
+        elif compare(req.value, self.COMM_BLOCK_IO):
+            print_command(self.name, "BLOCK_IO")
+        elif compare(req.value, self.COMM_MATCH_ACCESS):
+            print_command(self.name, "MATCH_ACCESS")
+        elif compare(req.value, self.COMM_BYTE_IO):
+            print_command(self.name, "BYTE_IO")
+        elif compare(req.value, self.COMM_1_WIRE_RESET):
+            print_command(self.name, "1_WIRE_RESET")
+        elif compare(req.value, self.COMM_PULSE):
+            print_command(self.name, "PULSE")
+        elif compare(req.value, self.COMM_SET_DURATION):
+            print_command(self.name, "SET_DURATION")
+        elif compare(req.value, self.COMM_ERROR_ESCAPE):
+            print_command(self.name, "ERROR_ESCAPE")
+
         self.device.maxusb_app.send_on_endpoint(EP_CONTROL, b'')
 
     def handle_mode_request(self, req):
-        if self.verbose > 0:
-            print(self.name, "received mode request", req)
 
-            if req.value == self.MOD_PULSE_EN:
-                print(self.name, "MODE: MOD_PULSE_EN =", hex(req.index))
-            elif req.value == self.MOD_SPEED_CHANGE_EN:
-                print(self.name, "MODE: MOD_SPEED_CHANGE_EN =", hex(req.index))
-            elif req.value == self.MOD_1WIRE_SPEED:
-                print(self.name, "MODE: MOD_1WIRE_SPEED =", hex(req.index))
-            elif req.value == self.MOD_STRONG_PU_DURATION:
-                print(self.name, "MODE: MOD_STRONG_PU_DURATION =", hex(req.index))
-            elif req.value == self.MOD_PULLDOWN_SLEWRATE:
-                print(self.name, "MODE: MOD_PULLDOWN_SLEWRATE =", hex(req.index))
-            elif req.value == self.MOD_PROG_PULSE_DURATION:
-                print(self.name, "MODE: MOD_PROG_PULSE_DURATION =", hex(req.index))
-            elif req.value == self.MOD_WRITE1_LOWTIME:
-                print(self.name, "MODE: MOD_WRITE1_LOWTIME =", hex(req.index))
-            elif req.value == self.MOD_DSOW0_TREC:
-                print(self.name, "MODE: MOD_DSOW0_TREC =", hex(req.index))
+        def print_mode(self, mode, req):
+            print(self.name, "received mode request", mode, "=", hex(req.index))
+
+        if req.value == self.MOD_PULSE_EN:
+            print_mode(self, "MOD_PULSE_EN", req)
+            self.device.status['spue'] = True if req.index == 0x02 else False
+        elif req.value == self.MOD_SPEED_CHANGE_EN:
+            print_mode(self, "MOD_SPEED_CHANGE_EN", req)
+            self.device.status['spce'] = True if req.index == 0x01 else False
+        elif req.value == self.MOD_1WIRE_SPEED:
+            print_mode(self, "MOD_1WIRE_SPEED", req)
+        elif req.value == self.MOD_STRONG_PU_DURATION:
+            print_mode(self, "MOD_STRONG_PU_DURATION", req)
+        elif req.value == self.MOD_PULLDOWN_SLEWRATE:
+            print_mode(self, "MOD_PULLDOWN_SLEWRATE", req)
+        elif req.value == self.MOD_PROG_PULSE_DURATION:
+            print_mode(self, "MOD_PROG_PULSE_DURATION", req)
+        elif req.value == self.MOD_WRITE1_LOWTIME:
+            print_mode(self, "MOD_WRITE1_LOWTIME", req)
+        elif req.value == self.MOD_DSOW0_TREC:
+            print_mode(self, "MOD_DSOW0_TREC", req)
 
         self.device.maxusb_app.send_on_endpoint(EP_CONTROL, b'')
 
@@ -154,7 +202,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     10,                  # polling interval
-                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
@@ -175,7 +222,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     16,                  # max packet size
                     0,                   # polling interval
-                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -188,7 +234,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     10,                  # polling interval
-                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
@@ -209,7 +254,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     64,                  # max packet size
                     0,                   # polling interval
-                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -222,7 +266,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     32,                  # max packet size
                     1,                   # polling interval
-                    None,
                     self.handle_status   # handler function
                 ),
                 USBEndpoint(
@@ -243,7 +286,6 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     16,                  # max packet size
                     0,                   # polling interval
-                    None,
                     self.handle_data_in  # handler function
                 )
             ], [
@@ -276,13 +318,11 @@ class USBMicroLANInterface(USBInterface):
                     USBEndpoint.usage_type_data,
                     64,                  # max packet size
                     0,                   # polling interval
-                    None,
                     self.handle_data_in  # handler function
                 )
             ]
         ]
 
-        # TODO: un-hardcode string index (last arg before "verbose")
         USBInterface.__init__(
                 self,
                 0,          # interface number
@@ -305,9 +345,10 @@ class USBMicroLANInterface(USBInterface):
     def handle_status(self):
         print("EP1: STATUS")
 
-        if self.configuration.device.search:
-            self.configuration.device.maxusb_app.send_on_endpoint(EP_STATUS,
-                b'\x01\x00\x20\x00\x05\x04\x04\x00\x20\x00\x00\x00\x00\x08\x00\x00\xa5')
+        if self.configuration.device.ready:
+            if self.configuration.device.search:
+                self.configuration.device.maxusb_app.send_on_endpoint(EP_STATUS,
+                    self.configuration.device.state_bytes + b'\x20\x00\x00\x00\x00\x08\x00\x00\xa5')
 
     def handle_data_out(self, req):
         print("EP2: DATA OUT =", req)
@@ -315,8 +356,10 @@ class USBMicroLANInterface(USBInterface):
     def handle_data_in(self):
         print("EP3: DATA_IN")
 
-        self.configuration.device.maxusb_app.send_on_endpoint(EP_DATA_IN,
-            b'\x00\x01\x02\x03\x04\x05\x06\x07')
+        if self.configuration.device.search:
+            self.configuration.device.maxusb_app.send_on_endpoint(EP_DATA_IN,
+                b'\x00\x01\x02\x03\x04\x05\x06\x07')
+            self.configuration.device.search = False
 
 
 class OneWireDevice:
@@ -400,38 +443,64 @@ class USBMicroLANDevice(USBDevice, OneWireDevice):
         ]
 
         config = USBConfiguration(
-                1,                 # index
-                "MicroLAN config", # string desc
-                interfaces         # interfaces
+                1,                 # configuration index
+                0,                 # string desc index
+                interfaces,        # interfaces
+                0xe0,              # attributes (self-powered, remote-wakeup)
+                50                 # 100 mA max
         )
 
         USBDevice.__init__(
                 self,
                 maxusb_app,
                 0xff,              # device class
-                0xff,              # device subclass
-                0xff,              # protocol release number
+                255,               # device subclass
+                255,               # protocol release number
                 64,                # max packet size for endpoint 0
                 0x04fa,            # vendor id: Dallas Semiconductor
                 0x2490,            # product id: DS1490F 2-in-1 Fob, 1-Wire adapter
-                0x0001,            # device revision
-                "Dallas",          # manufacturer string
-                "DS2490 Emulator", # product string
-                "00000001",        # serial number string
-                [ config ],
+                0x0200,            # device revision
+                0,                 # manufacturer string index
+                0,                 # product string index
+                0,                 # serial number string index
+                [ config ],        # configurations
                 verbose=verbose
         )
-
-        OneWireDevice.__init__(self, b'\x1f', b'\x50\x6f\x43\x20\x7c\x7c')
 
         self.device_vendor = USBMicroLANVendor(verbose)
         self.device_vendor.set_device(self)
 
-        self.bus = bus
+        self.status = {
+            'spue': False,
+            'spce': False,
+            'speed': 0x00,
+            'spud': 0x20,
+            'pdsrc': 0x05,
+            'lowt': 0x04,
+            'rect': 0x04
+        }
+
+        OneWireDevice.__init__(self, b'\x1f', b'\x50\x6f\x43\x20\x7c\x7c')
+
+        for device in bus:
+            pass
 
         self.ready = False
         self.search = False
-        self.reply = False
+
+    @property
+    def state_bytes(self):
+        state = \
+            bytes([(self.status['spce'] << 2) + self.status['spue']]) + \
+            bytes([self.status['speed']]) + \
+            bytes([self.status['spud']]) + \
+            bytes([0x00]) + \
+            bytes([self.status['pdsrc']]) + \
+            bytes([self.status['lowt']]) + \
+            bytes([self.status['rect']]) + \
+            bytes([0x00])
+
+        return state
 
     def handle_get_string_descriptor_request(self, num):
         try:
